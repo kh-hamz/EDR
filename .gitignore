@@ -1,6 +1,10 @@
 # Secrets
 .env
 
+# Local docs, not pushed to the repo
+docs/
+md files/
+
 # Python
 __pycache__/
 *.pyc
@@ -21,3 +25,5 @@ ml/models/*.pkl
 .idea/
 *.swp
 .DS_Store
+
+# Logs
