@@ -4,6 +4,7 @@
 # Local docs, not pushed to the repo
 docs/
 md files/
+CLAUDE.md
 
 # Python
 __pycache__/
@@ -26,4 +27,3 @@ ml/models/*.pkl
 *.swp
 .DS_Store
 
-# Logs
