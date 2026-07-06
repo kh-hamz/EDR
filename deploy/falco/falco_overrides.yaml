@@ -1,0 +1,16 @@
+# EDR overrides, installed to /etc/falco/config.d/99-edr.yaml by
+# lab/provision/install_sensors.sh. Falco merges config.d drop-ins over the
+# stock /etc/falco/falco.yaml (supported since Falco 0.36).
+#
+# The agent's falco_collector (Phase 1) tails the JSON file below.
+
+json_output: true
+json_include_output_property: true
+
+file_output:
+  enabled: true
+  keep_alive: false
+  filename: /var/log/falco/events.json
+
+stdout_output:
+  enabled: false

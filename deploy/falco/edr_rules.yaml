@@ -1,0 +1,29 @@
+# EDR telemetry rules, installed to /etc/falco/rules.d/edr_rules.yaml.
+#
+# Stock Falco rules only fire on suspicious behavior. The EDR needs full
+# telemetry: every exec (for process trees / lineage detections) and every
+# outbound connection (for reverse-shell and rare-destination detections).
+# The agent's normalizer matches these by rule name (ocsf_mapper.py).
+
+- rule: EDR process spawned
+  desc: Every process execution, shipped as telemetry for process-tree correlation
+  condition: evt.type in (execve, execveat) and evt.dir=<
+  output: >
+    exec (proc.pid=%proc.pid proc.ppid=%proc.ppid proc.name=%proc.name
+    proc.cmdline=%proc.cmdline proc.exepath=%proc.exepath
+    proc.pname=%proc.pname proc.pcmdline=%proc.pcmdline
+    user.name=%user.name user.uid=%user.uid)
+  priority: INFORMATIONAL
+  tags: [edr_telemetry]
+
+- rule: EDR outbound connection
+  desc: Every outbound connection attempt, excluding loopback
+  condition: >
+    evt.type=connect and evt.dir=< and fd.type in (ipv4, ipv6)
+    and not fd.dip in ("127.0.0.1", "::1")
+  output: >
+    connect (proc.pid=%proc.pid proc.name=%proc.name proc.cmdline=%proc.cmdline
+    fd.l4proto=%fd.l4proto fd.sip=%fd.sip fd.sport=%fd.sport
+    fd.dip=%fd.dip fd.dport=%fd.dport user.name=%user.name user.uid=%user.uid)
+  priority: INFORMATIONAL
+  tags: [edr_telemetry]
