@@ -11,6 +11,7 @@ __pycache__/
 *.pyc
 .venv/
 .pytest_cache/
+*.egg-info/
 
 # Node (console, Phase 6)
 node_modules/
