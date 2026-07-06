@@ -3,7 +3,7 @@
 
 # Local docs, not pushed to the repo
 docs/
-md files/
+md_files/
 CLAUDE.md
 
 # Python
