@@ -1,0 +1,78 @@
+# EDR backend stack, Phase 0: datastores only.
+# The backend (FastAPI) and console (React) services get added once their
+# code exists (Phase 1 / Phase 6); during early dev they run on the host.
+#
+# Lab-only security posture: OpenSearch runs with the security plugin disabled
+# so we skip TLS/cert bootstrapping while iterating. Do not expose these ports
+# beyond the lab network. mTLS comes later per the roadmap.
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.19.1
+    container_name: edr-opensearch
+    environment:
+      - discovery.type=single-node
+      - DISABLE_SECURITY_PLUGIN=true
+      - bootstrap.memory_lock=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  dashboards:
+    image: opensearchproject/opensearch-dashboards:2.19.1
+    container_name: edr-dashboards
+    environment:
+      - OPENSEARCH_HOSTS=["http://opensearch:9200"]
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+    ports:
+      - "${DASHBOARDS_PORT:-5601}:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: edr-postgres
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-edr}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-edr}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-edr}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  redis:
+    image: redis:7-alpine
+    container_name: edr-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+volumes:
+  opensearch-data:
+  postgres-data:
+  redis-data:
