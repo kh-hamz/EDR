@@ -1,0 +1,23 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+
+# Node (console, Phase 6)
+node_modules/
+dist/
+
+# ML artifacts and large data (Phase 3+)
+ml/data/
+ml/models/*.bin
+ml/models/*.pkl
+
+# Editor/OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
