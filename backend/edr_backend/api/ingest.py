@@ -1,13 +1,11 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..core.db import get_db
 from ..core.security import require_token
-from ..schema.events import NormalizedEvent
-from ..storage.models import AgentRecord
+from edr_schema.events import NormalizedEvent
 from ..storage.opensearch_client import bulk_index_events
+from ..storage.repositories import AgentRepository
 
 router = APIRouter(dependencies=[Depends(require_token)])
 
@@ -24,11 +22,6 @@ def ingest(events: list[NormalizedEvent], db: Session = Depends(get_db)):
     docs = [e.model_dump(mode="json") for e in events]
     accepted, errors = bulk_index_events(docs)
 
-    now = datetime.now(timezone.utc)
-    for agent_id in {e.agent_id for e in events}:
-        agent = db.get(AgentRecord, agent_id)
-        if agent is not None:
-            agent.last_seen = now
-    db.commit()
+    AgentRepository(db).touch_last_seen({e.agent_id for e in events})
 
     return {"accepted": accepted, "errors": len(errors)}
