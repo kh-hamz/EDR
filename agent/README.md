@@ -6,13 +6,14 @@ gateway over HTTP.
 
 ## Install (on the victim host)
 
-The agent imports the normalized event models from `edr-backend` (single
-source of truth for the schema), so both packages get installed:
+The agent imports the normalized event models from `edr-schema` (single
+source of truth for the schema, shared with the backend), so both the
+`shared` and `agent` packages get installed:
 
 ```bash
 git clone <repo> edr && cd edr
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ./backend -e ./agent
+pip install -e ./shared -e ./agent
 ```
 
 Sensors themselves are installed separately: `sudo bash lab/provision/install_sensors.sh`.
