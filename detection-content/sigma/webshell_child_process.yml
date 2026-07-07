@@ -1,0 +1,28 @@
+title: Web server spawning a shell or interpreter
+id: 8f1b9a2e-1a1b-4c1a-9f1a-000000000007
+status: experimental
+level: critical
+logsource:
+    category: process_creation
+detection:
+    sel:
+        event_type: process_create
+        process.parent.name:
+            - apache2
+            - httpd
+            - nginx
+            - php-fpm
+            - www-data
+        process.name:
+            - sh
+            - bash
+            - dash
+            - python
+            - python3
+            - perl
+            - nc
+    condition: sel
+tags:
+    - attack.persistence
+    - attack.initial-access
+    - attack.t1505.003

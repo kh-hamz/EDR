@@ -1,0 +1,24 @@
+title: Common binary name executing from a temp directory
+id: 8f1b9a2e-1a1b-4c1a-9f1a-000000000006
+status: experimental
+level: high
+logsource:
+    category: process_creation
+detection:
+    sel:
+        event_type: process_create
+        process.name:
+            - bash
+            - sh
+            - python
+            - python3
+            - curl
+            - nc
+        process.exe|contains:
+            - '/tmp/'
+            - '/dev/shm/'
+            - '/var/tmp/'
+    condition: sel
+tags:
+    - attack.defense-evasion
+    - attack.t1036

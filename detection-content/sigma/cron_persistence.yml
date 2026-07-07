@@ -1,0 +1,25 @@
+title: Suspicious cron entry
+id: 8f1b9a2e-1a1b-4c1a-9f1a-000000000004
+status: experimental
+level: high
+logsource:
+    category: persistence
+detection:
+    sel:
+        event_type: inventory
+        inventory.query_name: crontab_snapshot
+        # .keyword: inventory.columns.* is dynamically mapped, but OpenSearch's
+        # default dynamic string mapping still produces a text field with a
+        # .keyword subfield; see reverse_shell.yml for why contains needs it.
+        inventory.columns.command.keyword|contains:
+            - curl
+            - wget
+            - '/dev/tcp/'
+            - 'nc '
+            - 'bash -c'
+            - '| sh'
+            - '| bash'
+    condition: sel
+tags:
+    - attack.persistence
+    - attack.t1053.003

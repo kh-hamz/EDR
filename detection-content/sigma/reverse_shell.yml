@@ -1,0 +1,23 @@
+title: Reverse shell via netcat
+id: 8f1b9a2e-1a1b-4c1a-9f1a-000000000002
+status: experimental
+level: critical
+logsource:
+    category: process_creation
+detection:
+    sel:
+        event_type: process_create
+        process.name:
+            - nc
+            - ncat
+            - netcat
+        # .keyword: process.cmdline is an analyzed text field, so a wildcard
+        # contains-query against the base field would have the standard
+        # analyzer strip "-e" (hyphens are token separators) before matching.
+        process.cmdline.keyword|contains: '-e'
+    condition: sel
+tags:
+    - attack.execution
+    - attack.command-and-control
+    - attack.t1059
+    - attack.t1571
