@@ -1,0 +1,102 @@
+{
+  "index_patterns": ["edr-events-*"],
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "event_id": { "type": "keyword" },
+        "time": { "type": "date" },
+        "event_type": { "type": "keyword" },
+        "agent_id": { "type": "keyword" },
+        "observer": { "type": "keyword" },
+        "host": {
+          "properties": {
+            "host_id": { "type": "keyword" },
+            "hostname": { "type": "keyword" },
+            "os": { "type": "keyword" },
+            "ip": { "type": "ip" }
+          }
+        },
+        "mitre": {
+          "properties": {
+            "tactic": { "type": "keyword" },
+            "technique_id": { "type": "keyword" }
+          }
+        },
+        "process": {
+          "properties": {
+            "pid": { "type": "long" },
+            "ppid": { "type": "long" },
+            "name": { "type": "keyword" },
+            "cmdline": {
+              "type": "text",
+              "fields": { "keyword": { "type": "keyword", "ignore_above": 2048 } }
+            },
+            "exe": { "type": "keyword" },
+            "hash_sha256": { "type": "keyword" },
+            "user": {
+              "properties": {
+                "name": { "type": "keyword" },
+                "uid": { "type": "long" }
+              }
+            },
+            "parent": {
+              "properties": {
+                "pid": { "type": "long" },
+                "name": { "type": "keyword" },
+                "cmdline": {
+                  "type": "text",
+                  "fields": { "keyword": { "type": "keyword", "ignore_above": 2048 } }
+                }
+              }
+            }
+          }
+        },
+        "file": {
+          "properties": {
+            "path": {
+              "type": "text",
+              "fields": { "keyword": { "type": "keyword", "ignore_above": 2048 } }
+            },
+            "action": { "type": "keyword" },
+            "hash_sha256": { "type": "keyword" },
+            "size": { "type": "long" }
+          }
+        },
+        "network": {
+          "properties": {
+            "direction": { "type": "keyword" },
+            "proto": { "type": "keyword" },
+            "src_ip": { "type": "ip" },
+            "src_port": { "type": "long" },
+            "dst_ip": { "type": "ip" },
+            "dst_port": { "type": "long" },
+            "pid": { "type": "long" },
+            "process_name": { "type": "keyword" }
+          }
+        },
+        "auth": {
+          "properties": {
+            "action": { "type": "keyword" },
+            "result": { "type": "keyword" },
+            "user": { "type": "keyword" },
+            "method": { "type": "keyword" },
+            "src_ip": { "type": "ip" }
+          }
+        },
+        "inventory": {
+          "properties": {
+            "query_name": { "type": "keyword" },
+            "action": { "type": "keyword" },
+            "columns": { "type": "object", "dynamic": true }
+          }
+        },
+        "raw": { "type": "object", "enabled": false }
+      }
+    }
+  }
+}
