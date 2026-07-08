@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.db import Base
@@ -34,3 +34,23 @@ class Alert(Base):
     hostname: Mapped[str] = mapped_column(String(255), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(16), default="open")
+    # NULL until the correlation pass groups this alert into an incident.
+    incident_id: Mapped[int | None] = mapped_column(
+        ForeignKey("incidents.id"), nullable=True, index=True
+    )
+
+
+class Incident(Base):
+    """A group of related alerts on one host, close together in time. The
+    correlation pass creates these; alerts point back via incident_id."""
+
+    __tablename__ = "incidents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    hostname: Mapped[str] = mapped_column(String(255), index=True)
+    title: Mapped[str] = mapped_column(String(255))  # taken from the first alert
+    severity: Mapped[str] = mapped_column(String(16))  # max severity of member alerts
+    status: Mapped[str] = mapped_column(String(16), default="open")
+    first_alert_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_alert_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
