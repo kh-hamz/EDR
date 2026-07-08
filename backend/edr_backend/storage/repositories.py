@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .models import Alert, AgentRecord, Incident
+from .models import Alert, AgentRecord, Command, Incident
 
 
 class AgentRepository:
@@ -112,6 +112,22 @@ class AlertRepository:
             )
         )
 
+    def list_by_rule_without_command(self, rule_id: str) -> list[Alert]:
+        """Open alerts for a rule that have not yet triggered a command - the
+        candidates an auto-playbook still needs to act on."""
+        return list(
+            self.db.scalars(
+                select(Alert)
+                .outerjoin(Command, Command.source_alert_id == Alert.id)
+                .where(
+                    Alert.rule_id == rule_id,
+                    Alert.status == "open",
+                    Command.id.is_(None),
+                )
+                .order_by(Alert.created_at)
+            )
+        )
+
 
 class IncidentRepository:
     def __init__(self, db: Session):
@@ -184,3 +200,78 @@ class IncidentRepository:
         incident.status = status
         self.db.commit()
         return incident
+
+
+class CommandRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create(
+        self,
+        agent_id: str,
+        hostname: str,
+        action: str,
+        params: dict,
+        source_alert_id: int | None = None,
+    ) -> Command | None:
+        """Returns the new Command, or None if an auto-command already exists
+        for this source alert (the UniqueConstraint makes the playbook safe to
+        re-run). Manual commands (source_alert_id=None) never collide."""
+        command = Command(
+            agent_id=agent_id,
+            hostname=hostname,
+            action=action,
+            params=params,
+            source_alert_id=source_alert_id,
+            created_at=datetime.now(timezone.utc),
+        )
+        self.db.add(command)
+        try:
+            self.db.commit()
+        except IntegrityError:
+            self.db.rollback()
+            return None
+        return command
+
+    def claim_pending(self, agent_id: str) -> list[Command]:
+        """Return this agent's pending commands and move them to 'dispatched'
+        in one step, so a second poll before the ack doesn't re-deliver them."""
+        pending = list(
+            self.db.scalars(
+                select(Command)
+                .where(Command.agent_id == agent_id, Command.status == "pending")
+                .order_by(Command.created_at)
+            )
+        )
+        now = datetime.now(timezone.utc)
+        for command in pending:
+            command.status = "dispatched"
+            command.dispatched_at = now
+        self.db.commit()
+        return pending
+
+    def complete(self, command_id: int, status: str, result: str | None) -> Command | None:
+        command = self.db.get(Command, command_id)
+        if command is None:
+            return None
+        command.status = status
+        command.result = result
+        command.completed_at = datetime.now(timezone.utc)
+        self.db.commit()
+        return command
+
+    def get(self, command_id: int) -> Command | None:
+        return self.db.get(Command, command_id)
+
+    def list_all(self, hostname: str | None = None, status: str | None = None) -> list[Command]:
+        query = select(Command).order_by(Command.created_at.desc())
+        if hostname:
+            query = query.where(Command.hostname == hostname)
+        if status:
+            query = query.where(Command.status == status)
+        return list(self.db.scalars(query))
+
+    def alert_has_command(self, alert_id: int) -> bool:
+        return self.db.scalar(
+            select(func.count(Command.id)).where(Command.source_alert_id == alert_id)
+        ) > 0

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..core.db import Base
@@ -54,3 +54,36 @@ class Incident(Base):
     first_alert_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     last_alert_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class Command(Base):
+    """A response action the backend wants an agent to run. The agent polls
+    for its own pending commands, executes them, and acks a result. Lifecycle:
+    pending -> dispatched (agent picked it up) -> succeeded | failed."""
+
+    __tablename__ = "commands"
+    # At most one auto-issued command per source alert, so a playbook that
+    # re-sees the same alert on the next tick does not fire twice. Manual
+    # commands leave source_alert_id NULL, and NULLs are distinct under a
+    # unique constraint, so any number of manual commands coexist.
+    __table_args__ = (
+        UniqueConstraint("source_alert_id", name="uq_command_source_alert"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    agent_id: Mapped[str] = mapped_column(String(36), index=True)
+    hostname: Mapped[str] = mapped_column(String(255))
+    action: Mapped[str] = mapped_column(String(32))
+    params: Mapped[dict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)
+    result: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    source_alert_id: Mapped[int | None] = mapped_column(
+        ForeignKey("alerts.id"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    dispatched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
