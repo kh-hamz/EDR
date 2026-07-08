@@ -2,11 +2,11 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .models import Alert, AgentRecord
+from .models import Alert, AgentRecord, Incident
 
 
 class AgentRepository:
@@ -102,3 +102,85 @@ class AlertRepository:
         alert.status = status
         self.db.commit()
         return alert
+
+    def list_unassigned(self) -> list[Alert]:
+        """Alerts not yet grouped into an incident, oldest first so the
+        correlation pass processes them in arrival order."""
+        return list(
+            self.db.scalars(
+                select(Alert).where(Alert.incident_id.is_(None)).order_by(Alert.created_at)
+            )
+        )
+
+
+class IncidentRepository:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def find_open_since(self, hostname: str, cutoff: datetime) -> Incident | None:
+        """Most recent open incident on this host whose last alert is at or
+        after `cutoff` - the candidate an incoming alert can join."""
+        return self.db.scalar(
+            select(Incident)
+            .where(
+                Incident.hostname == hostname,
+                Incident.status == "open",
+                Incident.last_alert_at >= cutoff,
+            )
+            .order_by(Incident.last_alert_at.desc())
+            .limit(1)
+        )
+
+    def create(self, hostname: str, title: str, severity: str, alert_time: datetime) -> Incident:
+        incident = Incident(
+            hostname=hostname,
+            title=title,
+            severity=severity,
+            first_alert_at=alert_time,
+            last_alert_at=alert_time,
+            created_at=datetime.now(timezone.utc),
+        )
+        self.db.add(incident)
+        self.db.commit()
+        return incident
+
+    def attach_alert(self, incident: Incident, alert: Alert, severity: str) -> None:
+        """Adds the alert and advances the incident's window/severity. The
+        caller decides the escalated severity (policy lives in correlation)."""
+        alert.incident_id = incident.id
+        incident.severity = severity
+        if alert.created_at > incident.last_alert_at:
+            incident.last_alert_at = alert.created_at
+        self.db.commit()
+
+    def list_all(self, status: str | None = None) -> list[tuple[Incident, int]]:
+        """Incidents (newest first) paired with their alert count."""
+        query = (
+            select(Incident, func.count(Alert.id))
+            .outerjoin(Alert, Alert.incident_id == Incident.id)
+            .group_by(Incident.id)
+            .order_by(Incident.last_alert_at.desc())
+        )
+        if status:
+            query = query.where(Incident.status == status)
+        return [(incident, count) for incident, count in self.db.execute(query)]
+
+    def get(self, incident_id: int) -> Incident | None:
+        return self.db.get(Incident, incident_id)
+
+    def alerts_for(self, incident_id: int) -> list[Alert]:
+        return list(
+            self.db.scalars(
+                select(Alert)
+                .where(Alert.incident_id == incident_id)
+                .order_by(Alert.created_at)
+            )
+        )
+
+    def update_status(self, incident_id: int, status: str) -> Incident | None:
+        incident = self.db.get(Incident, incident_id)
+        if incident is None:
+            return None
+        incident.status = status
+        self.db.commit()
+        return incident
