@@ -15,6 +15,9 @@ class AgentSettings(BaseSettings):
     batch_size: int = 200
     flush_interval: float = 2.0
 
+    # How often the responder polls the backend for pending commands.
+    command_poll_interval: float = 5.0
+
     # Override auto-detected values if needed (e.g. multiple interfaces)
     hostname: str | None = None
     ip: str | None = None

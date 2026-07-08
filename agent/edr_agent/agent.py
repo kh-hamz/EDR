@@ -11,6 +11,7 @@ from .collectors.osquery_collector import OsqueryCollector
 from .config import AgentSettings
 from .enrollment import ensure_enrolled
 from .normalizer.ocsf_mapper import normalize
+from .responder.poller import Responder
 from .transport.http_shipper import HttpShipper
 
 log = logging.getLogger(__name__)
@@ -36,12 +37,14 @@ class EDRAgent:
             OsqueryCollector(self.settings.osquery_log),
         ]
         shipper = HttpShipper(self.settings, queue)
+        responder = Responder(self.settings, self.agent_id)
 
         threads = [
             threading.Thread(target=self._collect, args=(c, queue), name=c.observer, daemon=True)
             for c in collectors
         ]
         threads.append(threading.Thread(target=shipper.run, args=(self.stop,), name="shipper", daemon=True))
+        threads.append(threading.Thread(target=responder.run, args=(self.stop,), name="responder", daemon=True))
         for t in threads:
             t.start()
 
