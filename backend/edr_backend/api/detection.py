@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from ..core.security import require_token
 from ..correlation.grouper import run_correlation
 from ..detection.engine import run_detection
+from ..response.playbook import run_playbooks_standalone
 
 router = APIRouter(dependencies=[Depends(require_token)])
 
@@ -20,4 +21,5 @@ def trigger_detection(
     since = datetime.now(timezone.utc) - timedelta(minutes=lookback_minutes)
     created = run_detection(since)
     grouped = run_correlation()  # also sweeps any previously unassigned alerts
-    return {"alerts_created": created, "alerts_grouped": grouped}
+    issued = run_playbooks_standalone()  # auto-response for eligible alerts
+    return {"alerts_created": created, "alerts_grouped": grouped, "commands_issued": issued}
