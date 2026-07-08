@@ -5,8 +5,9 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from .api import alerts, detection, events, hosts, ingest
+from .api import alerts, detection, events, hosts, incidents, ingest
 from .core.db import Base, engine
+from .correlation.grouper import run_correlation
 from .detection.engine import run_detection
 from .storage.opensearch_client import ensure_index_template
 
@@ -24,6 +25,11 @@ async def _detection_loop():
             created = await asyncio.to_thread(run_detection, last_run)
             if created:
                 log.info("detection run: %d new alert(s)", created)
+            # Unconditional: also sweeps up alerts left unassigned by a
+            # restart between detection and correlation. Cheap when idle.
+            grouped = await asyncio.to_thread(run_correlation)
+            if grouped:
+                log.info("correlation: %d alert(s) grouped into incidents", grouped)
         except Exception:
             log.exception("detection run failed")
         last_run = now
@@ -46,6 +52,7 @@ app.include_router(hosts.router)
 app.include_router(events.router)
 app.include_router(alerts.router)
 app.include_router(detection.router)
+app.include_router(incidents.router)
 
 
 @app.get("/health")

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, Query
 
 from ..core.security import require_token
+from ..correlation.grouper import run_correlation
 from ..detection.engine import run_detection
 
 router = APIRouter(dependencies=[Depends(require_token)])
@@ -18,4 +19,5 @@ def trigger_detection(
     after running an Atomic Red Team test instead of waiting for the next tick."""
     since = datetime.now(timezone.utc) - timedelta(minutes=lookback_minutes)
     created = run_detection(since)
-    return {"alerts_created": created}
+    grouped = run_correlation()  # also sweeps any previously unassigned alerts
+    return {"alerts_created": created, "alerts_grouped": grouped}
