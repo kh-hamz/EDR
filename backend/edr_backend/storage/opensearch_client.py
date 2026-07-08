@@ -108,3 +108,26 @@ def search_rule_matches(lucene_query: str, since: str, size: int = 200) -> list[
         body={"query": query, "size": size},
     )
     return [hit["_source"] for hit in resp["hits"]["hits"]]
+
+
+def get_events_by_ids(event_ids: list[str]) -> list[dict]:
+    """Fetch events by event_id (which doubles as the doc _id) across all
+    daily indices. Used to pull the events behind an incident's alerts."""
+    if not event_ids:
+        return []
+    resp = client.search(
+        index=_events_index_pattern(),
+        body={"query": {"ids": {"values": event_ids}}, "size": len(event_ids)},
+    )
+    return [hit["_source"] for hit in resp["hits"]["hits"]]
+
+
+def search_process_events(hostname: str, since: str, until: str, size: int = 1000) -> list[dict]:
+    """All process_create events on one host in a window, oldest first - the
+    raw material for process-tree reconstruction."""
+    query = build_events_query(hostname=hostname, event_type="process_create", since=since, until=until)
+    resp = client.search(
+        index=_events_index_pattern(),
+        body={"query": query, "sort": [{"time": "asc"}], "size": size},
+    )
+    return [hit["_source"] for hit in resp["hits"]["hits"]]
