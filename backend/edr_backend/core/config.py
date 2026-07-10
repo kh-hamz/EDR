@@ -15,6 +15,12 @@ class Settings(BaseSettings):
 
     edr_api_token: str
 
+    # AI copilot (Phase 6). None until set in .env; ai/llm_client.py raises a
+    # clear error at call time rather than failing at import/startup, since
+    # the rest of the backend must run without it.
+    llm_api_key: str | None = None
+    llm_model: str = "claude-opus-4-8"
+
     @property
     def database_url(self) -> str:
         return (
