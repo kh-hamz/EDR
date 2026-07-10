@@ -15,6 +15,7 @@ dependencies = [
     "pysigma>=1.4",
     "pysigma-backend-opensearch>=2.0",
     "yara-python>=4.5",
+    "anthropic>=0.68",
 ]
 
 [project.optional-dependencies]
