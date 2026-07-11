@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 
-from .api import alerts, detection, events, hosts, incidents, ingest, response
+from .api import ai, alerts, detection, events, hosts, hunt, incidents, ingest, response
 from .core.db import Base, engine
 from .correlation.grouper import run_correlation
 from .detection.engine import run_detection
@@ -58,6 +58,8 @@ app.include_router(alerts.router)
 app.include_router(detection.router)
 app.include_router(incidents.router)
 app.include_router(response.router)
+app.include_router(ai.router)
+app.include_router(hunt.router)
 
 
 @app.get("/health")
