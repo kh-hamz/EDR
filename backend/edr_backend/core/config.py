@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_model: str = "claude-opus-4-8"
 
+    # Origin of the React console dev server, allowed through CORS.
+    console_origin: str = "http://localhost:5173"
+
     @property
     def database_url(self) -> str:
         return (

@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .api import ai, alerts, detection, events, hosts, hunt, incidents, ingest, response
+from .core.config import settings
 from .core.db import Base, engine
 from .correlation.grouper import run_correlation
 from .detection.engine import run_detection
@@ -51,6 +53,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="EDR Backend", lifespan=lifespan)
+# The console runs on a different origin (Vite dev server); agents and curl
+# are unaffected by CORS, so only the console origin needs allowing.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[settings.console_origin],
+    allow_methods=["*"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 app.include_router(ingest.router)
 app.include_router(hosts.router)
 app.include_router(events.router)
