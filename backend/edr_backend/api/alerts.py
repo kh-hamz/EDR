@@ -24,6 +24,7 @@ class AlertRecord(BaseModel):
     hostname: str
     created_at: datetime
     status: str
+    incident_id: int | None = None
 
     model_config = {"from_attributes": True}
 
