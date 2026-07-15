@@ -27,3 +27,25 @@ def parse_attack_tags(tags: list[str]) -> tuple[str | None, str | None]:
             tactic = body
 
     return tactic, technique_id
+
+
+def parse_all_attack_tags(tags: list[str]) -> tuple[list[str], list[str]]:
+    """Every (tactics, technique_ids) on a rule, order-preserving and
+    de-duplicated. parse_attack_tags keeps only the primary of each because
+    an alert row stores one technique; the coverage heatmap needs the full
+    set, since a single rule often spans several techniques (a reverse shell
+    is both T1059 and T1571)."""
+    tactics: list[str] = []
+    techniques: list[str] = []
+
+    for tag in tags:
+        body = str(tag).lower().removeprefix("attack.")
+        match = _TECHNIQUE_RE.match(body)
+        if match:
+            technique_id = "T" + match.group(1)
+            if technique_id not in techniques:
+                techniques.append(technique_id)
+        elif body not in tactics:
+            tactics.append(body)
+
+    return tactics, techniques
