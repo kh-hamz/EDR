@@ -24,12 +24,22 @@ class CompiledRule:
     query: str
 
 
-def load_rules() -> list[CompiledRule]:
+def load_sigma_collection() -> SigmaCollection:
+    """Parse every detection-content/sigma/*.yml into one SigmaCollection.
+    Shared by load_rules() (which then compiles to queries) and the Phase 7
+    coverage matrix (which only needs each rule's title/level/tags), so the
+    rule-file location and YAML parsing live in exactly one place."""
     files = sorted(_SIGMA_DIR.glob("*.yml"))
     if not files:
+        return SigmaCollection([])
+    return SigmaCollection.from_yaml("\n---\n".join(f.read_text() for f in files))
+
+
+def load_rules() -> list[CompiledRule]:
+    collection = load_sigma_collection()
+    if not collection.rules:
         return []
 
-    collection = SigmaCollection.from_yaml("\n---\n".join(f.read_text() for f in files))
     backend = OpensearchLuceneBackend()
 
     compiled = []
